@@ -22,6 +22,11 @@ export default function FormField({
   const [focused, setFocused] = useState(false);
   const [hidden, setHidden] = useState(true);
 
+  // Stop phone keyboards capitalising or "correcting" passwords
+  const passwordProps = secure
+    ? { autoCapitalize: 'none', autoCorrect: false, spellCheck: false }
+    : {};
+
   return (
     <View style={[styles.container, style]}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
@@ -47,6 +52,7 @@ export default function FormField({
           style={[styles.input, multiline && styles.inputMultiline]}
           placeholderTextColor={colors.placeholder}
           secureTextEntry={secure && hidden}
+          {...passwordProps}
           multiline={multiline}
           editable={editable}
           onFocus={() => setFocused(true)}
