@@ -126,11 +126,7 @@ eas build --platform android --profile preview
 
 ## Part 3: iPhone via Expo Go
 
-1. Publish the app:
-
-   ```
-   eas update --channel preview --message "First release" --clear-cache
-   ```
+1. Publish the app (the two commands under **Sending updates later** below).
 
 2. On expo.dev → your project → **Updates** → open the update you just published. It shows a **link and QR code** for opening it in Expo Go.
 3. iPhone users install **Expo Go** from the App Store, then tap your link (send it on WhatsApp). The app opens from the internet. Your laptop can be off.
@@ -142,15 +138,16 @@ eas build --platform android --profile preview
 
 ## Sending updates later
 
-Always keep `--clear-cache` on `eas update`. Without it, an old cached copy of the backend address can end up in the update.
-
-When you change the app's screens or logic:
+When you change the app's screens or logic, run these from the `credit-manager` folder:
 
 ```
 git add .
 git commit -m "What you changed"
-eas update --channel preview --message "What you changed" --clear-cache
+npx expo export --clear --platform android --platform ios --output-dir dist
+eas update --channel preview --environment preview --skip-bundler --input-dir dist --message "What you changed"
 ```
+
+The first command builds the app with the live backend address from `.env.production`. `--clear` stops an old cached address from sneaking in. The second uploads exactly what was built.
 
 Installed Android apps download it automatically the next time they're opened (it applies on the following launch), and Expo Go users get it too. No reinstalling.
 
