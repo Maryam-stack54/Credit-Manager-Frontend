@@ -308,12 +308,22 @@ export default function CreditsScreen() {
                   <Avatar name={customerName} size={42} />
 
                   <View style={styles.customerInfo}>
-                    <Text style={styles.customerName} numberOfLines={1}>
-                      {customerName}
-                    </Text>
+                    <View style={styles.nameRow}>
+                      <Text style={styles.customerName} numberOfLines={1}>
+                        {customerName}
+                      </Text>
+                      {credit.customer?.code ? (
+                        <Text style={styles.codeChip}>
+                          {credit.customer.code}
+                        </Text>
+                      ) : null}
+                    </View>
 
                     <Text style={styles.creditDate}>
                       Credit date: {formatDate(credit.creditDate)}
+                      {credit.createdBy?.name
+                        ? ` · by ${credit.createdBy.name}`
+                        : ''}
                     </Text>
                   </View>
 
@@ -564,10 +574,29 @@ const createStyles = (colors) => StyleSheet.create({
     marginRight: 8,
   },
 
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
   customerName: {
+    flexShrink: 1,
     fontSize: 16,
     fontWeight: '700',
     color: colors.text,
+  },
+
+  codeChip: {
+    marginLeft: 8,
+    backgroundColor: colors.primarySoft,
+    color: colors.primary,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+    borderRadius: 999,
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    overflow: 'hidden',
   },
 
   creditDate: {
