@@ -19,6 +19,7 @@ import {
   useAppTheme,
 } from '../../context/ThemeContext';
 import { authFetch } from '../../services/api';
+import { clearRole, saveRole } from '../../services/session';
 import ScreenHeader, { HEADER_OVERLAP } from '../../components/ScreenHeader';
 import Avatar from '../../components/Avatar';
 import {
@@ -118,6 +119,8 @@ export default function MoreScreen() {
       }
 
       setProfile(data.user);
+      // Keep the saved role up to date
+      await saveRole(data.user.role);
     } catch (error) {
       setErrorMessage('Could not connect to the server.');
     } finally {
@@ -147,6 +150,7 @@ export default function MoreScreen() {
           setUnlocked(false);
           await cancelAllCreditReminders();
           await SecureStore.deleteItemAsync('token');
+          await clearRole();
           router.replace('/auth/welcome');
         },
       },
@@ -183,7 +187,10 @@ export default function MoreScreen() {
               <Text style={styles.profileName} numberOfLines={1}>
                 {profile.name}
               </Text>
-              <Text style={styles.profileUsername}>@{profile.username}</Text>
+              <Text style={styles.profileUsername}>
+                @{profile.username}
+                {profile.role === 'staff' ? ' · Staff' : ''}
+              </Text>
 
               {profile.businessName ? (
                 <View style={styles.businessChip}>
@@ -218,12 +225,15 @@ export default function MoreScreen() {
           label="Edit profile"
           onPress={() => router.push('/more/edit-profile')}
         />
-        <MenuRow
-          icon="storefront-outline"
-          label="Business details"
-          value={profile?.businessName || 'Not set'}
-          onPress={() => router.push('/more/edit-profile')}
-        />
+        {/* Business details belong to the shop owner, so staff don't edit them */}
+        {profile?.role !== 'staff' ? (
+          <MenuRow
+            icon="storefront-outline"
+            label="Business details"
+            value={profile?.businessName || 'Not set'}
+            onPress={() => router.push('/more/edit-profile')}
+          />
+        ) : null}
         <MenuRow
           icon="key-outline"
           label="Change password"
@@ -258,6 +268,21 @@ export default function MoreScreen() {
           />
         </View>
       </View>
+
+      {/* Owners add their staff and switch their access on or off */}
+      {profile?.role === 'owner' ? (
+        <>
+          <Text style={styles.sectionTitle}>TEAM</Text>
+          <View style={styles.section}>
+            <MenuRow
+              icon="people-circle-outline"
+              label="Staff"
+              onPress={() => router.push('/more/staff')}
+              isLast
+            />
+          </View>
+        </>
+      ) : null}
 
       {/* Theme and payment reminder settings */}
       <Text style={styles.sectionTitle}>PREFERENCES</Text>

@@ -29,6 +29,8 @@ export default function EditProfileScreen() {
   const [businessName, setBusinessName] = useState('');
   const [businessPhone, setBusinessPhone] = useState('');
   const [businessAddress, setBusinessAddress] = useState('');
+  // Staff can change their name only, the business details are the owner's
+  const [isStaff, setIsStaff] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -54,6 +56,7 @@ export default function EditProfileScreen() {
           return;
         }
 
+        setIsStaff(data.user.role === 'staff');
         setName(data.user.name);
         setUsername(data.user.username);
         setBusinessName(data.user.businessName);
@@ -90,12 +93,16 @@ export default function EditProfileScreen() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          name: name.trim(),
-          businessName: businessName.trim(),
-          businessPhone: businessPhone.trim(),
-          businessAddress: businessAddress.trim(),
-        }),
+        body: JSON.stringify(
+          isStaff
+            ? { name: name.trim() }
+            : {
+                name: name.trim(),
+                businessName: businessName.trim(),
+                businessPhone: businessPhone.trim(),
+                businessAddress: businessAddress.trim(),
+              }
+        ),
       });
 
       const data = await response.json();
@@ -153,35 +160,39 @@ export default function EditProfileScreen() {
       </View>
 
       {/* Business details, also used to sign WhatsApp reminders */}
-      <Text style={styles.sectionTitle}>BUSINESS</Text>
-      <View style={styles.card}>
-        <FormField
-          label="Business name"
-          icon="storefront-outline"
-          placeholder="e.g. Musa Provisions Store"
-          value={businessName}
-          onChangeText={setBusinessName}
-        />
+      {!isStaff ? (
+        <>
+          <Text style={styles.sectionTitle}>BUSINESS</Text>
+          <View style={styles.card}>
+            <FormField
+              label="Business name"
+              icon="storefront-outline"
+              placeholder="e.g. Musa Provisions Store"
+              value={businessName}
+              onChangeText={setBusinessName}
+            />
 
-        <FormField
-          label="Business phone"
-          icon="call-outline"
-          placeholder="Phone number customers can reach you on"
-          keyboardType="phone-pad"
-          value={businessPhone}
-          onChangeText={setBusinessPhone}
-        />
+            <FormField
+              label="Business phone"
+              icon="call-outline"
+              placeholder="Phone number customers can reach you on"
+              keyboardType="phone-pad"
+              value={businessPhone}
+              onChangeText={setBusinessPhone}
+            />
 
-        <FormField
-          label="Business address"
-          icon="location-outline"
-          placeholder="Shop address"
-          multiline
-          value={businessAddress}
-          onChangeText={setBusinessAddress}
-          style={styles.lastField}
-        />
-      </View>
+            <FormField
+              label="Business address"
+              icon="location-outline"
+              placeholder="Shop address"
+              multiline
+              value={businessAddress}
+              onChangeText={setBusinessAddress}
+              style={styles.lastField}
+            />
+          </View>
+        </>
+      ) : null}
 
       {/* Error message if saving fails */}
       <MessageBanner type="error" message={errorMessage} />
