@@ -3,12 +3,13 @@ import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { cancelAllCreditReminders } from './notificationService';
 import { setUnlocked } from './appLock';
+import { clearRole } from './session';
 
 let handlingExpiry = false;
 
 // Logs the user out and sends them to the login screen. Runs once even if
 // several requests fail at the same time.
-export async function endSession(message) {
+export async function endSession(message, title = 'Please log in again') {
   if (handlingExpiry) return;
   handlingExpiry = true;
 
@@ -17,11 +18,12 @@ export async function endSession(message) {
   try {
     await cancelAllCreditReminders();
     await SecureStore.deleteItemAsync('token');
+    await clearRole();
   } finally {
     router.replace('/auth/login');
 
     if (message) {
-      Alert.alert('Please log in again', message);
+      Alert.alert(title, message);
     }
 
     // Allow the next expiry to be handled after this one has finished
@@ -39,6 +41,22 @@ export async function authFetch(url, options = {}) {
 
   if (response.status === 401 && options.headers?.Authorization) {
     endSession('Your session has expired. Log in to continue.');
+  }
+
+  // An account that was turned off while the person was using the app
+  if (response.status === 403 && options.headers?.Authorization) {
+    try {
+      const body = await response.clone().json();
+
+      if (body?.message === 'Account disabled') {
+        endSession(
+          'This account has been turned off. Please contact your shop owner or the administrator.',
+          'Account disabled'
+        );
+      }
+    } catch (error) {
+      // Not a JSON reply, so it was not the account-disabled message
+    }
   }
 
   return response;
