@@ -1,4 +1,4 @@
-import { Alert, Linking } from 'react-native';
+import { Alert, Linking, Platform } from 'react-native';
 
 // WhatsApp needs numbers in international format without "+":
 // 08031234567 -> 2348031234567
@@ -92,6 +92,51 @@ export function buildCustomerReminder({ customerName, senderName, credits }) {
     '',
     'Thank you for your patronage!',
   ].join('\n');
+}
+
+// Plain text is cheaper to send by SMS. Characters like ₦ and • make a
+// phone switch to a format that fits only 70 characters per message part
+// instead of 160, so they are swapped for simple ones.
+function toSmsText(message) {
+  return String(message)
+    .replace(/₦/g, 'N')
+    .replace(/[•·]/g, '-')
+    .replace(/×/g, 'x')
+    .replace(/[‘’]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/[–—]/g, '-');
+}
+
+// Opens the phone's messaging app on the customer's number with the
+// reminder typed in. Nothing is sent until the shop owner presses send,
+// and it goes from the owner's own SIM at their normal SMS rate.
+export async function openSms(phone, message) {
+  // Keep the digits, and a leading + if there is one
+  const raw = String(phone || '').trim();
+  const number = (raw.startsWith('+') ? '+' : '') + raw.replace(/\D/g, '');
+
+  if (number.replace(/\D/g, '').length < 10) {
+    Alert.alert(
+      'Check the phone number',
+      'This customer’s phone number does not look complete. Edit the customer and try again.'
+    );
+    return;
+  }
+
+  const body = encodeURIComponent(toSmsText(message));
+  // iPhone and Android write the message part of the link differently
+  const url = Platform.OS === 'ios'
+    ? `sms:${number}&body=${body}`
+    : `sms:${number}?body=${body}`;
+
+  try {
+    await Linking.openURL(url);
+  } catch (error) {
+    Alert.alert(
+      'Could not open messages',
+      'This phone could not open its messaging app. Check that it can send SMS.'
+    );
+  }
 }
 
 // Opens WhatsApp on the customer's chat with the message typed in.

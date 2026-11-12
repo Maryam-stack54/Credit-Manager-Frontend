@@ -28,7 +28,11 @@ import useRole from '../../hooks/useRole';
 import EmptyState from '../../components/EmptyState';
 import StatusBadge, { isOverdue } from '../../components/StatusBadge';
 import useSenderName from '../../hooks/useSenderName';
-import { buildCustomerReminder, openWhatsApp } from '../../services/whatsapp';
+import {
+  buildCustomerReminder,
+  openSms,
+  openWhatsApp,
+} from '../../services/whatsapp';
 
 // One customer: their details, total owed, credit history and new credit form
 export default function CustomerDetails() {
@@ -589,25 +593,44 @@ export default function CustomerDetails() {
         </View>
       </View>
 
-      {/* WHATSAPP REMINDER */}
+      {/* WHATSAPP AND SMS REMINDERS */}
 
       {totalOutstanding > 0 ? (
-        <AppButton
-          title="Remind on WhatsApp"
-          icon="logo-whatsapp"
-          variant="whatsapp"
-          onPress={() =>
-            openWhatsApp(
-              customer.phone,
-              buildCustomerReminder({
-                customerName: customer.name,
-                senderName,
-                credits,
-              })
-            )
-          }
-          style={styles.whatsappButton}
-        />
+        <>
+          <AppButton
+            title="Remind on WhatsApp"
+            icon="logo-whatsapp"
+            variant="whatsapp"
+            onPress={() =>
+              openWhatsApp(
+                customer.phone,
+                buildCustomerReminder({
+                  customerName: customer.name,
+                  senderName,
+                  credits,
+                })
+              )
+            }
+            style={styles.whatsappButton}
+          />
+
+          <AppButton
+            title="Remind by SMS"
+            icon="chatbubble-ellipses-outline"
+            variant="secondary"
+            onPress={() =>
+              openSms(
+                customer.phone,
+                buildCustomerReminder({
+                  customerName: customer.name,
+                  senderName,
+                  credits,
+                })
+              )
+            }
+            style={styles.whatsappButton}
+          />
+        </>
       ) : null}
 
       {/* EDIT CUSTOMER FORM */}

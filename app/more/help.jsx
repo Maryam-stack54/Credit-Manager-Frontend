@@ -44,9 +44,9 @@ const GUIDE = [
       'Yes. Open the credit and tap "Edit Credit" to change the items or the due date. Payments already recorded are kept and the balance is worked out again, so the new total cannot be less than what has already been paid.',
   },
   {
-    question: 'How do I remind a customer to pay on WhatsApp?',
+    question: 'How do I remind a customer to pay on WhatsApp or by SMS?',
     answer:
-      'Open the customer, or one of their credits, and tap "Remind on WhatsApp". WhatsApp opens on their chat with a polite message already written, showing how much they owe and when it is due. Check it, change anything you like, then press send. Nothing is sent until you press send. Add your business name in More > Business details so the message says who it is from.',
+      'Open the customer, or one of their credits, and tap "Remind on WhatsApp". WhatsApp opens on their chat with a polite message already written, showing how much they owe and when it is due. Check it, change anything you like, then press send. Nothing is sent until you press send. Add your business name in More > Business details so the message says who it is from.\n\nTo send the same reminder by text message, tap "Remind by SMS" instead. Your phone\'s messaging app opens on their number with the message ready. It is sent from your own SIM card at your normal SMS rate, and only when you press send.',
   },
   {
     question: 'How do payment reminders work?',
