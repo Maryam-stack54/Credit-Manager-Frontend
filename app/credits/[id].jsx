@@ -25,7 +25,11 @@ import EmptyState from '../../components/EmptyState';
 import StatusBadge, { isOverdue } from '../../components/StatusBadge';
 import useSenderName from '../../hooks/useSenderName';
 import useRole from '../../hooks/useRole';
-import { buildCreditReminder, openWhatsApp } from '../../services/whatsapp';
+import {
+  buildCreditReminder,
+  openSms,
+  openWhatsApp,
+} from '../../services/whatsapp';
 
 import {
   cancelCreditReminders,
@@ -596,25 +600,44 @@ export default function CreditDetailsScreen() {
         </View>
       )}
 
-      {/* WHATSAPP REMINDER */}
+      {/* WHATSAPP AND SMS REMINDERS */}
 
       {credit.balance > 0 && !showEditForm && credit.customer?.phone ? (
-        <AppButton
-          title="Remind on WhatsApp"
-          icon="logo-whatsapp"
-          variant="whatsapp"
-          onPress={() =>
-            openWhatsApp(
-              credit.customer.phone,
-              buildCreditReminder({
-                customerName: credit.customer.name,
-                senderName,
-                credit,
-              })
-            )
-          }
-          style={styles.whatsappButton}
-        />
+        <>
+          <AppButton
+            title="Remind on WhatsApp"
+            icon="logo-whatsapp"
+            variant="whatsapp"
+            onPress={() =>
+              openWhatsApp(
+                credit.customer.phone,
+                buildCreditReminder({
+                  customerName: credit.customer.name,
+                  senderName,
+                  credit,
+                })
+              )
+            }
+            style={styles.whatsappButton}
+          />
+
+          <AppButton
+            title="Remind by SMS"
+            icon="chatbubble-ellipses-outline"
+            variant="secondary"
+            onPress={() =>
+              openSms(
+                credit.customer.phone,
+                buildCreditReminder({
+                  customerName: credit.customer.name,
+                  senderName,
+                  credit,
+                })
+              )
+            }
+            style={styles.whatsappButton}
+          />
+        </>
       ) : null}
 
       {/* PAYMENT FORM */}
