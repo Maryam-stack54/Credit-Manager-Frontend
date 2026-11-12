@@ -146,9 +146,11 @@ export default function DashboardScreen() {
         id: `payment-${payment.id}`,
         type: 'payment',
         title: 'Payment received',
-        description: `${payment.customer} paid ${formatMoney(
-          payment.amount
-        )}`,
+        description: `${payment.customer}${
+          payment.customerCode ? ` (${payment.customerCode})` : ''
+        } paid ${formatMoney(payment.amount)}${
+          payment.recordedBy ? ` · by ${payment.recordedBy}` : ''
+        }`,
         date: payment.date,
       });
     });
@@ -158,9 +160,11 @@ export default function DashboardScreen() {
         id: `credit-${credit.id}`,
         type: 'credit',
         title: 'Credit added',
-        description: `${credit.customer} — ${formatMoney(
-          credit.amount
-        )}`,
+        description: `${credit.customer}${
+          credit.customerCode ? ` (${credit.customerCode})` : ''
+        } — ${formatMoney(credit.amount)}${
+          credit.recordedBy ? ` · by ${credit.recordedBy}` : ''
+        }`,
         date: credit.date,
       });
     });
@@ -170,7 +174,9 @@ export default function DashboardScreen() {
         id: `customer-${customer.id}`,
         type: 'customer',
         title: 'New customer',
-        description: customer.name,
+        description: `${customer.name}${
+          customer.code ? ` (${customer.code})` : ''
+        }`,
         date: customer.createdAt,
       });
     });
@@ -297,6 +303,7 @@ export default function DashboardScreen() {
       <View style={styles.listRowText}>
         <Text style={styles.listRowTitle} numberOfLines={1}>
           {credit.customer}
+          {credit.customerCode ? ` · ${credit.customerCode}` : ''}
         </Text>
 
         <Text style={styles.listRowSubtitle}>
@@ -530,6 +537,7 @@ export default function DashboardScreen() {
                 numberOfLines={1}
               >
                 {customer.name}
+                {customer.code ? ` · ${customer.code}` : ''}
               </Text>
 
               <Text style={styles.listRowAmount}>
