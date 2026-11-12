@@ -84,6 +84,11 @@ function RootNavigator() {
         />
 
         <Stack.Screen
+          name="admin/index"
+          options={{ headerShown: false }}
+        />
+
+        <Stack.Screen
           name="customers/[id]"
           options={{ headerShown: true, title: 'Customer' }}
         />
@@ -96,6 +101,11 @@ function RootNavigator() {
         <Stack.Screen
           name="more/edit-profile"
           options={{ headerShown: true, title: 'Edit Profile' }}
+        />
+
+        <Stack.Screen
+          name="more/staff"
+          options={{ headerShown: true, title: 'Staff' }}
         />
 
         <Stack.Screen
