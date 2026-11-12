@@ -24,6 +24,7 @@ import Avatar from '../../components/Avatar';
 import EmptyState from '../../components/EmptyState';
 import StatusBadge, { isOverdue } from '../../components/StatusBadge';
 import useSenderName from '../../hooks/useSenderName';
+import useRole from '../../hooks/useRole';
 import { buildCreditReminder, openWhatsApp } from '../../services/whatsapp';
 
 import {
@@ -34,6 +35,8 @@ import {
 // One credit: balance, items, payments, and forms to add a payment or edit it
 export default function CreditDetailsScreen() {
   const { colors } = useAppTheme();
+  // Only the shop owner can edit a credit after it is recorded
+  const isOwner = useRole() === 'owner';
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const { id } = useLocalSearchParams();
@@ -507,9 +510,11 @@ export default function CreditDetailsScreen() {
               {credit.customer?.name || 'Unknown customer'}
             </Text>
 
-            {credit.customer?.phone ? (
+            {credit.customer?.code || credit.customer?.phone ? (
               <Text style={styles.customerPhone}>
-                {credit.customer.phone}
+                {[credit.customer.code, credit.customer.phone]
+                  .filter(Boolean)
+                  .join(' · ')}
               </Text>
             ) : null}
           </View>
@@ -556,11 +561,19 @@ export default function CreditDetailsScreen() {
             </Text>
           </View>
         </View>
+
+        {/* Who recorded this credit */}
+        {credit.createdBy?.name ? (
+          <Text style={styles.recordedBy}>
+            Recorded by {credit.createdBy.name}
+            {credit.createdBy.role === 'staff' ? ' (staff)' : ''}
+          </Text>
+        ) : null}
       </View>
 
       {/* ACTIONS */}
 
-      {(canAddPayment || !showEditForm) && (
+      {(canAddPayment || (isOwner && !showEditForm)) && (
         <View style={styles.actions}>
           {canAddPayment ? (
             <AppButton
@@ -571,7 +584,7 @@ export default function CreditDetailsScreen() {
             />
           ) : null}
 
-          {!showEditForm ? (
+          {isOwner && !showEditForm ? (
             <AppButton
               title="Edit Credit"
               icon="create-outline"
@@ -938,6 +951,9 @@ export default function CreditDetailsScreen() {
                 <Text style={styles.paymentDetails} numberOfLines={2}>
                   {payment.method}
                   {payment.note ? ` · ${payment.note}` : ''}
+                  {payment.recordedBy?.name
+                    ? ` · by ${payment.recordedBy.name}`
+                    : ''}
                 </Text>
               </View>
 
@@ -1029,6 +1045,12 @@ const createStyles = (colors) => StyleSheet.create({
     fontSize: 13,
     color: colors.heroSubtext,
     marginTop: 2,
+  },
+
+  recordedBy: {
+    fontSize: 12,
+    color: colors.heroSubtext,
+    marginTop: 14,
   },
 
   balanceLabel: {
