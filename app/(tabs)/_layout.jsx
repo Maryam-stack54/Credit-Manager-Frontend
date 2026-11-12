@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '../../context/ThemeContext';
+import useRole from '../../hooks/useRole';
 
 // Outline icon normally, filled icon for the tab that is open
 const tabIcon = (name) =>
@@ -14,9 +15,11 @@ const tabIcon = (name) =>
     );
   };
 
-// The four bottom tabs: Home, Customers, Credits and More
+// The four bottom tabs: Home, Customers, Credits and More.
+// Staff don't get Home, because it shows the shop's totals.
 export default function TabLayout() {
   const { colors } = useAppTheme();
+  const role = useRole();
 
   return (
     <Tabs
@@ -41,6 +44,8 @@ export default function TabLayout() {
         options={{
           title: 'Home',
           tabBarIcon: tabIcon('home'),
+          // href: null hides the tab (it stays hidden until the role is known)
+          href: role === 'owner' ? undefined : null,
         }}
       />
 

@@ -17,6 +17,7 @@ import KeyboardScreen from '../../components/KeyboardScreen';
 import FormField from '../../components/FormField';
 import AppButton from '../../components/AppButton';
 import MessageBanner from '../../components/MessageBanner';
+import { getRole, homeRouteFor, saveRole } from '../../services/session';
 import {
   confirmWithDevice,
   getDeviceUnlockMethod,
@@ -39,10 +40,12 @@ const QUICK_LOGIN = {
   },
 };
 
-// Opens Home, then the credit from a tapped reminder if there was one
-const goToApp = () => {
+// Opens the first screen for this kind of person (Home for an owner, the
+// customer list for staff, the admin area for the admin), then the credit
+// from a tapped reminder if there was one
+const goToApp = async () => {
   setUnlocked(true);
-  router.replace('/(tabs)/dashboard');
+  router.replace(homeRouteFor(await getRole()));
 
   const pending = takePendingRoute();
   if (pending) {
@@ -82,14 +85,20 @@ export default function LoginScreen() {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        // A 401 means the saved login is no longer valid
-        if (response.status === 401) {
-          // The saved login has expired, so a normal login is needed
+        // A 401 means the saved login is no longer valid, and a 403 means
+        // the account has been turned off
+        if (response.status === 401 || response.status === 403) {
+          // A normal login is needed (and shows the reason)
           await SecureStore.deleteItemAsync('token');
           return;
         }
 
         const data = response.ok ? await response.json() : null;
+
+        // Keep the saved role up to date
+        if (data?.user?.role) {
+          await saveRole(data.user.role);
+        }
         const firstName = (data?.user?.name || '').trim().split(/\s+/)[0];
 
         setQuickLogin({ ...QUICK_LOGIN[method], firstName });
@@ -142,6 +151,7 @@ export default function LoginScreen() {
 
       // Keep the login token in the phone's encrypted storage
       await SecureStore.setItemAsync('token', data.token);
+      await saveRole(data.user?.role);
 
       setTimeout(goToApp, 1000);
     } catch (error) {

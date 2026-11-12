@@ -24,14 +24,20 @@ import KeyboardScreen from '../../components/KeyboardScreen';
 import FormField from '../../components/FormField';
 import AppButton from '../../components/AppButton';
 import Avatar from '../../components/Avatar';
+import useRole from '../../hooks/useRole';
 import EmptyState from '../../components/EmptyState';
 import StatusBadge, { isOverdue } from '../../components/StatusBadge';
 import useSenderName from '../../hooks/useSenderName';
-import { buildCustomerReminder, openWhatsApp } from '../../services/whatsapp';
+import {
+  buildCustomerReminder,
+  openSms,
+  openWhatsApp,
+} from '../../services/whatsapp';
 
 // One customer: their details, total owed, credit history and new credit form
 export default function CustomerDetails() {
   const { colors } = useAppTheme();
+  const isOwner = useRole() === 'owner';
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const { id } = useLocalSearchParams();
@@ -512,41 +518,49 @@ export default function CustomerDetails() {
         <View style={styles.profileTop}>
           <Avatar name={customer.name} size={60} inverted />
 
-          <View style={styles.profileActions}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.iconButton,
-                pressed && styles.pressed,
-              ]}
-              onPress={() => {
-                setEditName(customer.name);
-                setEditPhone(customer.phone);
-                setEditAddress(customer.address || '');
-                setShowEditForm(true);
-              }}
-              accessibilityRole="button"
-              accessibilityLabel="Edit Customer"
-            >
-              <Ionicons name="pencil" size={17} color={colors.heroText} />
-            </Pressable>
+          {/* Only the shop owner can edit or delete a customer */}
+          {isOwner ? (
+            <View style={styles.profileActions}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.iconButton,
+                  pressed && styles.pressed,
+                ]}
+                onPress={() => {
+                  setEditName(customer.name);
+                  setEditPhone(customer.phone);
+                  setEditAddress(customer.address || '');
+                  setShowEditForm(true);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Edit Customer"
+              >
+                <Ionicons name="pencil" size={17} color={colors.heroText} />
+              </Pressable>
 
-            <Pressable
-              style={({ pressed }) => [
-                styles.iconButton,
-                pressed && styles.pressed,
-              ]}
-              onPress={handleDeleteCustomer}
-              disabled={savingCustomer}
-              accessibilityRole="button"
-              accessibilityLabel="Delete Customer"
-            >
-              <Ionicons name="trash-outline" size={17} color="#FF9C9C" />
-            </Pressable>
-          </View>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.iconButton,
+                  pressed && styles.pressed,
+                ]}
+                onPress={handleDeleteCustomer}
+                disabled={savingCustomer}
+                accessibilityRole="button"
+                accessibilityLabel="Delete Customer"
+              >
+                <Ionicons name="trash-outline" size={17} color="#FF9C9C" />
+              </Pressable>
+            </View>
+          ) : null}
         </View>
 
         {/* Customer's name, phone and address */}
         <Text style={styles.customerName}>{customer.name}</Text>
+
+        {/* The customer's own code, made by the server and never changed */}
+        {customer.code ? (
+          <Text style={styles.codeChip}>{customer.code}</Text>
+        ) : null}
 
         <View style={styles.contactRow}>
           <Ionicons name="call" size={14} color={colors.heroSubtext} />
@@ -579,25 +593,44 @@ export default function CustomerDetails() {
         </View>
       </View>
 
-      {/* WHATSAPP REMINDER */}
+      {/* WHATSAPP AND SMS REMINDERS */}
 
       {totalOutstanding > 0 ? (
-        <AppButton
-          title="Remind on WhatsApp"
-          icon="logo-whatsapp"
-          variant="whatsapp"
-          onPress={() =>
-            openWhatsApp(
-              customer.phone,
-              buildCustomerReminder({
-                customerName: customer.name,
-                senderName,
-                credits,
-              })
-            )
-          }
-          style={styles.whatsappButton}
-        />
+        <>
+          <AppButton
+            title="Remind on WhatsApp"
+            icon="logo-whatsapp"
+            variant="whatsapp"
+            onPress={() =>
+              openWhatsApp(
+                customer.phone,
+                buildCustomerReminder({
+                  customerName: customer.name,
+                  senderName,
+                  credits,
+                })
+              )
+            }
+            style={styles.whatsappButton}
+          />
+
+          <AppButton
+            title="Remind by SMS"
+            icon="chatbubble-ellipses-outline"
+            variant="secondary"
+            onPress={() =>
+              openSms(
+                customer.phone,
+                buildCustomerReminder({
+                  customerName: customer.name,
+                  senderName,
+                  credits,
+                })
+              )
+            }
+            style={styles.whatsappButton}
+          />
+        </>
       ) : null}
 
       {/* EDIT CUSTOMER FORM */}
@@ -858,6 +891,9 @@ export default function CustomerDetails() {
                 <View>
                   <Text style={styles.creditDate}>
                     {formatDate(credit.creditDate)}
+                    {credit.createdBy?.name
+                      ? ` · by ${credit.createdBy.name}`
+                      : ''}
                   </Text>
                   <Text style={styles.creditAmount}>
                     Total ₦{credit.totalAmount.toLocaleString()}
@@ -984,6 +1020,20 @@ const createStyles = (colors) => StyleSheet.create({
     fontWeight: '800',
     color: colors.heroText,
     letterSpacing: -0.6,
+    marginBottom: 6,
+  },
+
+  codeChip: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.heroSoft,
+    color: colors.heroText,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    borderRadius: 999,
+    paddingVertical: 3,
+    paddingHorizontal: 10,
+    overflow: 'hidden',
     marginBottom: 6,
   },
 
