@@ -44,11 +44,11 @@ export default function CustomersScreen() {
   const [search, setSearch] = useState('');
 
 
-  // Customers matching the search box (name, phone or address)
+  // Customers matching the search box (name, phone, code or address)
   const query = search.trim().toLowerCase();
   const filteredCustomers = query
     ? customers.filter((customer) =>
-        [customer.name, customer.phone, customer.address]
+        [customer.name, customer.phone, customer.code, customer.address]
           .filter(Boolean)
           .some((field) => field.toLowerCase().includes(query))
       )
@@ -114,8 +114,10 @@ export default function CustomersScreen() {
     setAddress('');
   };
 
-  // Checks the form, saves the customer and reloads the list
-  const handleAddCustomer = async () => {
+  // Checks the form, saves the customer and reloads the list.
+  // confirmDuplicate is true when the user has agreed to add a customer
+  // whose phone number is already in the list.
+  const handleAddCustomer = async (confirmDuplicate = false) => {
     // Name and phone number are required
     if (!name.trim()) {
       Alert.alert('Missing name', 'Please enter the customer name.');
@@ -152,11 +154,29 @@ export default function CustomersScreen() {
             name: name.trim(),
             phone: phone.trim(),
             address: address.trim(),
+            confirmDuplicate,
           }),
         }
       );
 
       const data = await response.json();
+
+      // This shop already has someone with this phone number: ask first
+      if (response.status === 409 && data.duplicatePhone) {
+        const existing = data.existingCustomer;
+
+        Alert.alert(
+          'Phone number already used',
+          `${data.message}
+
+Existing customer: ${existing?.name}${existing?.code ? ` (${existing.code})` : ''}`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Add anyway', onPress: () => handleAddCustomer(true) },
+          ]
+        );
+        return;
+      }
 
       if (!response.ok) {
         Alert.alert(
@@ -168,7 +188,7 @@ export default function CustomersScreen() {
 
       Alert.alert(
         'Customer added',
-        `${name.trim()} has been added successfully.`
+        `${name.trim()} has been added successfully. Their code is ${data.customer?.code}.`
       );
 
       resetForm();
@@ -289,7 +309,7 @@ export default function CustomersScreen() {
               title="Save Customer"
               icon="checkmark"
               loading={saving}
-              onPress={handleAddCustomer}
+              onPress={() => handleAddCustomer(false)}
             />
           </Animated.View>
         )}
@@ -319,7 +339,7 @@ export default function CustomersScreen() {
               <Ionicons name="search" size={18} color={colors.textMuted} />
               <TextInput
                 style={styles.searchInput}
-                placeholder="Search by name, phone or address"
+                placeholder="Search by name, phone or code"
                 placeholderTextColor={colors.placeholder}
                 value={search}
                 onChangeText={setSearch}
@@ -386,9 +406,14 @@ export default function CustomersScreen() {
                   <Avatar name={customer.name} size={46} />
 
                   <View style={styles.customerInfo}>
-                    <Text style={styles.customerName} numberOfLines={1}>
-                      {customer.name}
-                    </Text>
+                    <View style={styles.nameRow}>
+                      <Text style={styles.customerName} numberOfLines={1}>
+                        {customer.name}
+                      </Text>
+                      {customer.code ? (
+                        <Text style={styles.codeChip}>{customer.code}</Text>
+                      ) : null}
+                    </View>
 
                     <View style={styles.metaRow}>
                       <Ionicons
@@ -587,11 +612,30 @@ const createStyles = (colors) => StyleSheet.create({
     marginRight: 8,
   },
 
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 3,
+  },
+
   customerName: {
+    flexShrink: 1,
     fontSize: 16,
     fontWeight: '700',
     color: colors.text,
-    marginBottom: 3,
+  },
+
+  codeChip: {
+    marginLeft: 8,
+    backgroundColor: colors.primarySoft,
+    color: colors.primary,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+    borderRadius: 999,
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    overflow: 'hidden',
   },
 
   metaRow: {
