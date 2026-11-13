@@ -23,13 +23,16 @@ import KeyboardScreen from '../../components/KeyboardScreen';
 import ScreenHeader, { HEADER_OVERLAP } from '../../components/ScreenHeader';
 import EmptyState from '../../components/EmptyState';
 
-// One number in the totals grid
-function StatCell({ value, label, style }) {
+// One number in the totals grid, with its icon
+function StatCell({ icon, value, label, style }) {
   const { colors } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
     <View style={[styles.statCell, style]}>
+      <View style={styles.statIcon}>
+        <Ionicons name={icon} size={16} color={colors.primary} />
+      </View>
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
     </View>
@@ -224,20 +227,30 @@ export default function AdminScreen() {
         <View style={styles.statsCard}>
           <View style={styles.statsRow}>
             <StatCell
+              icon="storefront-outline"
               value={totals?.owners ?? 0}
               label="Shop owners"
               style={styles.statCellDivider}
             />
-            <StatCell value={totals?.staff ?? 0} label="Staff" />
+            <StatCell
+              icon="people-outline"
+              value={totals?.staff ?? 0}
+              label="Staff"
+            />
           </View>
 
           <View style={[styles.statsRow, styles.statsRowDivider]}>
             <StatCell
+              icon="person-outline"
               value={totals?.customers ?? 0}
               label="Customers"
               style={styles.statCellDivider}
             />
-            <StatCell value={totals?.credits ?? 0} label="Credits" />
+            <StatCell
+              icon="receipt-outline"
+              value={totals?.credits ?? 0}
+              label="Credits"
+            />
           </View>
 
           <Text style={[styles.statsNote, offCount > 0 && styles.statsNoteOff]}>
@@ -431,6 +444,16 @@ const createStyles = (colors) => StyleSheet.create({
   statCellDivider: {
     borderRightWidth: 1,
     borderRightColor: colors.divider,
+  },
+
+  statIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: colors.primarySoft,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
   },
 
   statValue: {
