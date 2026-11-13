@@ -10,6 +10,7 @@ import {
   StyleSheet,
   Switch,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,19 +21,15 @@ import { setUnlocked } from '../../services/appLock';
 import { cancelAllCreditReminders } from '../../services/notificationService';
 import KeyboardScreen from '../../components/KeyboardScreen';
 import ScreenHeader, { HEADER_OVERLAP } from '../../components/ScreenHeader';
-import Avatar from '../../components/Avatar';
 import EmptyState from '../../components/EmptyState';
 
 // One number in the totals grid
-function StatTile({ icon, label, value }) {
+function StatCell({ value, label, style }) {
   const { colors } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
-    <View style={styles.statTile}>
-      <View style={styles.statIcon}>
-        <Ionicons name={icon} size={16} color={colors.primary} />
-      </View>
+    <View style={[styles.statCell, style]}>
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
     </View>
@@ -49,6 +46,10 @@ export default function AdminScreen() {
   const [owners, setOwners] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Search box and the All / Off filter
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState('all');
 
   // Which owner's switch is being saved right now
   const [switchingId, setSwitchingId] = useState(null);
@@ -165,6 +166,20 @@ export default function AdminScreen() {
     ]);
   };
 
+  // Owners matching the search box (name, username or shop name) and the filter
+  const query = search.trim().toLowerCase();
+  const offCount = owners.filter((owner) => !owner.isActive).length;
+
+  const visibleOwners = owners.filter((owner) => {
+    if (filter === 'off' && owner.isActive) return false;
+
+    if (!query) return true;
+
+    return [owner.name, owner.username, owner.businessName]
+      .filter(Boolean)
+      .some((field) => field.toLowerCase().includes(query));
+  });
+
   if (loading) {
     return (
       <View style={styles.centerContainer}>
@@ -205,92 +220,131 @@ export default function AdminScreen() {
       />
 
       <View style={styles.overlap}>
-        {/* Overall totals */}
+        {/* Overall totals in a simple 2 by 2 grid */}
         <View style={styles.statsCard}>
           <View style={styles.statsRow}>
-            <StatTile icon="storefront-outline" label="Shop owners" value={totals?.owners ?? 0} />
-            <StatTile icon="people-outline" label="Staff" value={totals?.staff ?? 0} />
-            <StatTile icon="person-outline" label="Customers" value={totals?.customers ?? 0} />
-            <StatTile icon="receipt-outline" label="Credits" value={totals?.credits ?? 0} />
+            <StatCell
+              value={totals?.owners ?? 0}
+              label="Shop owners"
+              style={styles.statCellDivider}
+            />
+            <StatCell value={totals?.staff ?? 0} label="Staff" />
           </View>
 
-          <Text style={styles.statsNote}>
-            {totals?.disabledOwners
-              ? `${totals.disabledOwners} shop${totals.disabledOwners !== 1 ? 's are' : ' is'} turned off`
+          <View style={[styles.statsRow, styles.statsRowDivider]}>
+            <StatCell
+              value={totals?.customers ?? 0}
+              label="Customers"
+              style={styles.statCellDivider}
+            />
+            <StatCell value={totals?.credits ?? 0} label="Credits" />
+          </View>
+
+          <Text style={[styles.statsNote, offCount > 0 && styles.statsNoteOff]}>
+            {offCount > 0
+              ? `${offCount} shop${offCount !== 1 ? 's are' : ' is'} turned off`
               : 'All shops are active'}
           </Text>
         </View>
 
-        <Text style={styles.privacyNote}>
-          For privacy, the admin sees only counts. Customers and what they owe
-          stay private to each shop.
-        </Text>
+        {/* Search and the All / Off filter */}
+        <View style={styles.searchBar}>
+          <Ionicons name="search" size={18} color={colors.textMuted} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search by name, username or shop"
+            placeholderTextColor={colors.placeholder}
+            value={search}
+            onChangeText={setSearch}
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="search"
+          />
+          {search ? (
+            <Pressable
+              onPress={() => setSearch('')}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+            >
+              <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+            </Pressable>
+          ) : null}
+        </View>
 
-        {/* Every shop owner */}
-        <Text style={styles.sectionTitle}>
-          {`SHOP OWNERS (${owners.length})`}
-        </Text>
+        <View style={styles.chipRow}>
+          {[
+            { key: 'all', label: `All (${owners.length})` },
+            { key: 'off', label: `Off (${offCount})` },
+          ].map((chip) => (
+            <Pressable
+              key={chip.key}
+              style={[styles.chip, filter === chip.key && styles.chipActive]}
+              onPress={() => setFilter(chip.key)}
+              accessibilityRole="button"
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  filter === chip.key && styles.chipTextActive,
+                ]}
+              >
+                {chip.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
 
-        {owners.length === 0 ? (
+        {/* The shop owners, one compact row each */}
+        {visibleOwners.length === 0 ? (
           <View style={styles.card}>
             <EmptyState
               compact
-              icon="storefront-outline"
-              title="No shop owners yet"
-              text="Owners appear here after they register in the app."
+              icon={owners.length === 0 ? 'storefront-outline' : 'search-outline'}
+              title={owners.length === 0 ? 'No shop owners yet' : 'No matches'}
+              text={
+                owners.length === 0
+                  ? 'Owners appear here after they register in the app.'
+                  : 'No shop owner matches your search or filter.'
+              }
             />
           </View>
         ) : (
           <View style={styles.listCard}>
-            {owners.map((owner, index) => (
+            {visibleOwners.map((owner, index) => (
               <View
                 key={owner.id}
                 style={[
                   styles.ownerRow,
-                  index === owners.length - 1 && styles.ownerRowLast,
+                  index === visibleOwners.length - 1 && styles.ownerRowLast,
                 ]}
               >
-                <View style={styles.ownerTop}>
-                  <Avatar name={owner.name} size={44} />
-
-                  <View style={styles.ownerInfo}>
+                <View style={styles.ownerInfo}>
+                  <View style={styles.nameRow}>
                     <Text style={styles.ownerName} numberOfLines={1}>
                       {owner.name}
                     </Text>
-                    <Text style={styles.ownerMeta} numberOfLines={1}>
-                      @{owner.username}
-                      {owner.businessName ? ` · ${owner.businessName}` : ''}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.ownerStatus,
-                        !owner.isActive && styles.ownerStatusOff,
-                      ]}
-                    >
-                      {owner.isActive ? 'Account on' : 'Account off'}
-                    </Text>
+                    {!owner.isActive ? (
+                      <Text style={styles.offBadge}>Off</Text>
+                    ) : null}
                   </View>
 
-                  <Switch
-                    value={owner.isActive}
-                    disabled={switchingId === owner.id}
-                    onValueChange={(value) => handleToggle(owner, value)}
-                    trackColor={{ true: colors.primary }}
-                  />
+                  <Text style={styles.ownerUsername} numberOfLines={1}>
+                    @{owner.username}
+                    {owner.businessName ? ` · ${owner.businessName}` : ''}
+                  </Text>
+
+                  <Text style={styles.ownerCounts} numberOfLines={1}>
+                    {`${owner.staffCount} staff · ${owner.customerCount} customers · ${owner.creditCount} credits`}
+                  </Text>
                 </View>
 
-                {/* How big this shop is */}
-                <View style={styles.countsRow}>
-                  <Text style={styles.countText}>
-                    <Text style={styles.countNumber}>{owner.staffCount}</Text> staff
-                  </Text>
-                  <Text style={styles.countText}>
-                    <Text style={styles.countNumber}>{owner.customerCount}</Text> customers
-                  </Text>
-                  <Text style={styles.countText}>
-                    <Text style={styles.countNumber}>{owner.creditCount}</Text> credits
-                  </Text>
-                </View>
+                <Switch
+                  value={owner.isActive}
+                  disabled={switchingId === owner.id}
+                  onValueChange={(value) => handleToggle(owner, value)}
+                  trackColor={{ true: colors.primary }}
+                />
               </View>
             ))}
           </View>
@@ -306,6 +360,11 @@ export default function AdminScreen() {
           <Ionicons name="key-outline" size={18} color={colors.primary} />
           <Text style={styles.linkText}>Change password</Text>
         </Pressable>
+
+        <Text style={styles.privacyNote}>
+          The admin sees counts only. Customers and what they owe stay private
+          to each shop.
+        </Text>
       </View>
     </KeyboardScreen>
   );
@@ -346,7 +405,9 @@ const createStyles = (colors) => StyleSheet.create({
   statsCard: {
     backgroundColor: colors.card,
     borderRadius: 22,
-    padding: 16,
+    paddingTop: 6,
+    paddingBottom: 14,
+    marginBottom: 18,
     borderWidth: 1,
     borderColor: colors.divider,
     ...colors.shadow,
@@ -356,57 +417,98 @@ const createStyles = (colors) => StyleSheet.create({
     flexDirection: 'row',
   },
 
-  statTile: {
-    flex: 1,
-    alignItems: 'center',
+  statsRowDivider: {
+    borderTopWidth: 1,
+    borderTopColor: colors.divider,
   },
 
-  statIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: colors.primarySoft,
-    justifyContent: 'center',
+  statCell: {
+    flex: 1,
     alignItems: 'center',
-    marginBottom: 8,
+    paddingVertical: 14,
+  },
+
+  statCellDivider: {
+    borderRightWidth: 1,
+    borderRightColor: colors.divider,
   },
 
   statValue: {
-    fontSize: 20,
+    fontSize: 28,
     fontWeight: '800',
     color: colors.text,
+    letterSpacing: -0.5,
   },
 
   statLabel: {
-    fontSize: 11,
-    color: colors.textMuted,
+    fontSize: 13,
+    color: colors.textSecondary,
     marginTop: 2,
-    textAlign: 'center',
   },
 
   statsNote: {
     fontSize: 13,
+    color: colors.textMuted,
+    textAlign: 'center',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.divider,
+  },
+
+  statsNoteOff: {
+    color: colors.danger,
+    fontWeight: '600',
+  },
+
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 50,
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.divider,
+    paddingHorizontal: 14,
+    marginBottom: 12,
+    ...colors.shadow,
+  },
+
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    color: colors.text,
+    marginLeft: 10,
+    paddingVertical: 0,
+  },
+
+  chipRow: {
+    flexDirection: 'row',
+    marginBottom: 14,
+  },
+
+  chip: {
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.divider,
+    backgroundColor: colors.card,
+    marginRight: 8,
+  },
+
+  chipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+
+  chipText: {
+    fontSize: 13,
+    fontWeight: '600',
     color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: 14,
   },
 
-  privacyNote: {
-    fontSize: 12,
-    lineHeight: 18,
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginVertical: 16,
-    paddingHorizontal: 8,
-  },
-
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.textMuted,
-    letterSpacing: 0.8,
-    marginBottom: 10,
-    marginLeft: 4,
+  chipTextActive: {
+    color: colors.onPrimary,
   },
 
   card: {
@@ -428,7 +530,9 @@ const createStyles = (colors) => StyleSheet.create({
   },
 
   ownerRow: {
-    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: colors.divider,
@@ -438,66 +542,53 @@ const createStyles = (colors) => StyleSheet.create({
     borderBottomWidth: 0,
   },
 
-  ownerTop: {
+  ownerInfo: {
+    flex: 1,
+    marginRight: 10,
+  },
+
+  nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
 
-  ownerInfo: {
-    flex: 1,
-    marginLeft: 14,
-    marginRight: 8,
-  },
-
   ownerName: {
+    flexShrink: 1,
     fontSize: 16,
     fontWeight: '700',
     color: colors.text,
   },
 
-  ownerMeta: {
+  offBadge: {
+    marginLeft: 8,
+    backgroundColor: colors.dangerBg,
+    color: colors.danger,
+    fontSize: 11,
+    fontWeight: '700',
+    borderRadius: 999,
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    overflow: 'hidden',
+  },
+
+  ownerUsername: {
     fontSize: 13,
     color: colors.textSecondary,
     marginTop: 2,
   },
 
-  ownerStatus: {
+  ownerCounts: {
     fontSize: 12,
-    fontWeight: '600',
-    color: colors.primary,
-    marginTop: 3,
-  },
-
-  ownerStatusOff: {
-    color: colors.danger,
-  },
-
-  countsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    marginTop: 12,
-  },
-
-  countText: {
-    fontSize: 13,
-    color: colors.textSecondary,
-  },
-
-  countNumber: {
-    fontWeight: '800',
-    color: colors.text,
+    color: colors.textMuted,
+    marginTop: 2,
   },
 
   linkRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 24,
-    paddingVertical: 12,
+    marginTop: 22,
+    paddingVertical: 10,
   },
 
   linkText: {
@@ -505,5 +596,14 @@ const createStyles = (colors) => StyleSheet.create({
     fontWeight: '600',
     color: colors.primary,
     marginLeft: 8,
+  },
+
+  privacyNote: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: 6,
+    paddingHorizontal: 12,
   },
 });
